@@ -4,6 +4,8 @@ use std::io::{Read, Write};
 use std::sync::Arc;
 
 use once_cell::sync::OnceCell;
+use rustls::sign::CertifiedKey;
+use rustls::client::AlwaysResolvesClientRawPublicKeys;
 use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
 use rustls::{ClientConfig, ClientConnection, RootCertStore, StreamOwned, ALL_VERSIONS};
 use rustls_pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs1KeyDer, PrivatePkcs8KeyDer};
@@ -148,9 +150,21 @@ fn build_config(tls_config: &TlsConfig) -> Arc<ClientConfig> {
         .clone_key();
         debug!("Use client certficiate with key kind {:?}", key.kind());
 
-        builder
-            .with_client_auth_cert(cert_chain.collect(), key_der)
-            .expect("valid client auth certificate")
+        if tls_config.use_rpk {
+            debug!("Client certificate using RPK");
+            let signing_key = provider.key_provider.load_private_key(key_der).expect("private key");
+            let certified_key = Arc::new(CertifiedKey::new(
+                cert_chain.collect(),
+                signing_key
+            ));
+            let resolver = Arc::new(AlwaysResolvesClientRawPublicKeys::new(certified_key));
+            builder
+                .with_client_cert_resolver(resolver)
+        } else {
+            builder
+                .with_client_auth_cert(cert_chain.collect(), key_der)
+                .expect("valid client auth certificate")
+        }
     } else {
         builder.with_no_client_auth()
     };

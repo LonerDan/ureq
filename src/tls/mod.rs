@@ -92,6 +92,12 @@ pub struct TlsConfig {
     /// Defaults to `true`.
     pub(crate) use_sni: bool,
 
+    /// Whether to treat the [`client_cert`] value as raw keypair and use RPK (RFC7250)
+    /// during client authentication. Currently only supported by [`TlsProvider::Rustls`].
+    ///
+    /// Defaults to `false`.
+    pub(crate) use_rpk: bool,
+
     /// **WARNING** Disable all server certificate verification.
     ///
     /// This breaks encryption and leaks secrets. Must never be enabled for code where
@@ -146,6 +152,15 @@ impl TlsConfigBuilder {
     /// Defaults to `true`.
     pub fn use_sni(mut self, v: bool) -> Self {
         self.config.use_sni = v;
+        self
+    }
+
+    /// Whether to treat the [`client_cert`] value as raw keypair and use RPK (RFC7250)
+    /// during client authentication. Currently only supported by [`TlsProvider::Rustls`].
+    ///
+    /// Defaults to `false`.
+    pub fn use_rpk(mut self, v: bool) -> Self {
+        self.config.use_rpk = v;
         self
     }
 
@@ -219,6 +234,7 @@ impl Default for TlsConfig {
             client_cert: None,
             root_certs: RootCerts::WebPki,
             use_sni: true,
+            use_rpk: false,
             disable_verification: false,
         }
     }
@@ -237,6 +253,7 @@ impl fmt::Debug for TlsConfig {
             .field("client_cert", &self.client_cert)
             .field("root_certs", &self.root_certs)
             .field("use_sni", &self.use_sni)
+            .field("use_rpk", &self.use_rpk)
             .field("disable_verification", &self.disable_verification)
             .finish()
     }
